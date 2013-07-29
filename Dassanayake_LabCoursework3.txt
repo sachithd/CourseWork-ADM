@@ -1,0 +1,70 @@
+Lab Coursework 3
+
+1. Completed the Tutorial
+
+2.
+
+1. List the names of courses and their units, if known
+
+(distinct[{cn,u} | {c,cn}<-<<course,coursename>>; {c,u}<-<<course,units>>])
+
+// Assuming the unit is 0 for courses which don't have a unit we can do a union to the above queriy [{cn,0} | {c,cn}<-<<course,coursename>>; not (member [cid|{cid,u}<-<<course,units>>] c)]
+
+
+
+2. Count the number of courses of each number of units				
+gc count [{u,c} | {c,u}<-distinct <<course,units>>]
+
+
+
+3. List the names of courses and their programmes, if known				
+(distinct[{cn,p} | {c,cn}<-<<course,coursename>>; {c,p}<-<<course,programme>>])
+
+
+
+
+4. Count the number of courses in each programme, if known			
+gc count [{p,c} | {c,p}<-distinct <<course,programme>>]
+
+
+
+
+5. List the names of every student and, for each student, the names of the courses that the student attends				(distinct[{n,cn} | {s,n}<-<<student,name>> ; {sid,y,cid}<-<<courseenrollments>>; {c,cn}<-<<course,coursename>>;  ((cid=c) and (sid=s))]) ++ (distinct[{n,NotEnrolled} | {sn,n}<-<<student,name>>; not (member [ss|{ss,yy,cc}<-<<courseenrollments>>] sn)])
+
+
+//Can use the following query instead if I use the same variables. do not need the comparion (cid=c) and (sid=s)				//(distinct[{stn,cn} | {st,stn}<-<<student,name>> ; {st,yr,cid}<-<<courseenrollments>>; {cid,cn}<-<<course,coursename>>]) ++ (distinct[{stn,NotEnrolled} | {st,stn}<-<<student,name>>; not (member [st|{st,yr,cid}<-<<courseenrollments>>] st)])
+
+
+
+6. List the name of every student and the total units he/she will earn based on their course attendance
+
+(gc sum[{stn,un} | {stnid,stn}<-<<student,name>> ; {sid,year,cid}<-<<courseenrollments>>; {coid,un}<- <<course,units>>;  ((coid=cid) and (sid=stnid))]) ++ (gc sum[ {snm,0} | {stnid2,snm}<-<<student,name>>;  not (member [si|{ss,si}<-<<courseenrollments,studentid>>] stnid2)]
+
+
+
+
+3.
+
+The following assumptions have been made
+
+Every account should have at least one customer as it has a reference to the customer table (custID)
+There can be customers who don't have accounts
+
+
+1. (distinct[{atype,cname}|{atype,cid}<-<<Accounts,custID>>; {cid,name}<-<<Customers,name>>])
+
+
+
+2.(gc count[{cid,atype}|{atype,cid}<--distinct<<Accounts,custID>>]) ++ (gc count[{cid,0}|{cus,cid}<--<<Customers,custID>>; not (member[cid|{atype,cid}<-<<Accounts,custID>>]cid])
+
+
+3.(gc count[{name,atype}|{atype,cid}<--distinct<<Accounts,custID>>;{cid,name}<-<<Customers,name>>]) ++ (gc count[{name,0}|{cus,cid}<--<<Customers,custID>>; {cid,name}<-<<Customers,name>>; not (member[cid|{atype,cid}<-<<Accounts,custID>>]cid])
+
+
+
+4 (gc sum[{cid,bal}|{atype,cid,bal}<--distinct<<Accounts,custID,balance>>]) ++ (gc sum[{cid,0}|{atype,cid,bal}<--distinct<<Accounts,custID,balance>>;not (member[cid|{atype,cid}<-<<Accounts,custID>>]cid])
+
+5 (gc sum[{name,bal}|{atype,cid,bal}<--distinct<<Accounts,custID,balance>>;{cid,name}<-<<Customers,name>>]) ++ (gc sum[{name,0}|{atype,cid,bal}<--distinct<<Accounts,custID,balance>>;{cid,name}<-<<Customers,name>>; not (member[cid|{atype,cid}<-<<Accounts,custID>>]cid)])
+
+
+

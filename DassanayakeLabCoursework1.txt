@@ -1,0 +1,182 @@
+--1.1.1
+
+CREATE OR REPLACE PROCEDURE updateJobPrices(j IN Number, p IN Number)
+
+IS
+
+BEGIN
+
+UPDATE job set jbsPrice = p where jbsid=j;
+
+End;
+/
+
+
+--1.1.2
+
+
+CREATE OR REPLACE FUNCTION empHoursOfWork (eID IN employee.empID%TYPE, pID IN project.prjID%TYPE)
+	RETURN EmpPrjContribution.cHours%TYPE
+IS
+	tHours	EmpPrjContribution.cHours%TYPE := 0.0; --Define & Initiate the variable
+BEGIN
+
+	SELECT SUM(ec.cHours) INTO thours
+        FROM EmpPrjContribution ec 
+        WHERE ec.empID = eID and ec.prjID = pID;
+
+	RETURN tHours;
+END;
+/
+
+
+--1.1.3
+
+CREATE OR REPLACE PROCEDURE cursor_salary (pID IN project.prjID%TYPE)
+ IS
+ 
+  CURSOR job_cost 
+   IS
+    SELECT SUM(chours)*20 as thours FROM EmpPrjContribution where prjid=pid GROUP BY EMPID;
+ 
+  job_rec job_cost%ROWTYPE;
+
+BEGIN
+
+ OPEN job_cost;
+ 
+ LOOP
+
+  FETCH job_cost INTO job_rec;
+  EXIT WHEN job_cost%NOTFOUND; 
+   DBMS_OUTPUT.PUT_LINE('TOTAL COST : ' || job_rec.thours);
+ 
+ END LOOP;
+
+ CLOSE job_cost;
+END;
+/
+
+
+--1.2.1
+
+CREATE OR REPLACE FUNCTION tableData (tname IN VARCHAR2 , strwhere IN VARCHAR2)
+	RETURN NUMBER
+IS
+	
+	norows NUMBER; --Define the variable
+BEGIN
+
+	EXECUTE IMMEDIATE 
+	'SELECT Count(*) from '|| tname || ' where ' || strwhere into norows;       
+
+	return norows;
+	
+
+END;
+/
+
+
+--1.2.2
+
+
+CREATE OR REPLACE PROCEDURE SalaryCorrection(salary_threshold IN Employee.empSalary%TYPE) IS
+	Cursor salaryinfo IS
+		SELECT * from employee;
+		si salaryinfo%ROWTYPE;
+		newsalary Employee.empSalary%TYPE;
+		employeeID Employee.empID%TYPE;
+
+BEGIN
+	OPEN salaryinfo;
+	LOOP
+	 FETCH salaryinfo INTO si;
+	EXIT WHEN salaryinfo%NOTFOUND;
+
+	IF si.empsalary < salary_threshold THEN
+		newsalary := si.empsalary * 1.2;
+		employeeID := si.empID;
+		EXECUTE IMMEDIATE
+			'UPDATE employee set empsalary = ' || newsalary ||
+			'WHERE empId = : eID'
+			USING employeeID;
+
+	END IF;
+	END LOOP;
+	CLOSE salaryinfo;
+
+END;
+/
+
+
+
+--2.1.1
+
+CREATE OR REPLACE TRIGGER Printname
+AFTER INSERT ON EMPLOYEE
+FOR Each row
+DECLARE 
+jname job.jbsname%TYPE;
+BEGIN
+	DBMS_OUTPUT.PUT_LINE(:new.empname);
+	SELECT job.jbsname into jname from job where job.jbsid = :new.jbsid;
+	DBMS_OUTPUT.PUT_LINE(jname);
+
+END;
+/
+
+
+--2.1.2
+
+CREATE OR REPLACE TRIGGER deleteall
+BEFORE DELETE ON MACHINES
+FOR Each row
+
+BEGIN
+	
+	DELETE FROM OIL WHERE mchid = :old.mchid;
+	DELETE FROM WORK WHERE mchid = :old.mchid;
+
+END;
+/
+
+
+
+--2.1.3
+
+CREATE OR REPLACE TRIGGER checkdata
+AFTER DELETE ON EmpPrjcontribution
+FOR EACH ROW
+DECLARE
+pcost project.prjcost%TYPE;
+BEGIN
+	SELECT project.prjcost into pcost from project where project.prjID = :old.prjID;
+	Update project SET prjcost = pcost*90/100 where prjID = :old.prjid;
+END;
+/
+
+CREATE OR REPLACE TRIGGER DeleteEmpALL
+AFTER DELETE ON Employee
+FOR EACH ROW
+BEGIN
+	Delete from EmpPrjcontribution where empid = :old.empid;
+END;
+/
+
+
+--2.1.4
+
+
+CREATE OR REPLACE TRIGGER CheckHours
+BEFORE UPDATE ON WORK
+FOR Each row
+
+BEGIN
+	IF :new.whours > :old.whours+5 THEN
+		DBMS_OUTPUT.PUT_LiNE('New Hour Exceeds +5');
+		:new.whours := :old.whours;
+		
+	END IF;
+END;
+/
+
